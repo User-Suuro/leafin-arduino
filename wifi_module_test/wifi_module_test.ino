@@ -1,7 +1,7 @@
-#include <SoftwareSerial.h>
-
-// Important: Set your Serial Monitor Settings Line Ending to "Both NL & CR"
+// Important: Set your Serial Monitor Line Ending to "Both NL & CR"
 // Pins: RX (Arduino receives from ESP TX), TX (Arduino sends to ESP RX)
+
+#include <SoftwareSerial.h>
 
 SoftwareSerial espSerial(3,2); // RX, TX
 
@@ -10,6 +10,8 @@ void setup() {
   espSerial.begin(9600);    // ESP-01S default baud rate
 
   delay(2000);
+  espSerial.println("AT"); 
+
   Serial.println("ESP-01S AT Command Test Ready");
 }
 
