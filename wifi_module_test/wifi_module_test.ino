@@ -1,30 +1,19 @@
-// Important: Set your Serial Monitor Line Ending to "Both NL & CR"
-// Pins: RX (Arduino receives from ESP TX), TX (Arduino sends to ESP RX)
-
-#include <SoftwareSerial.h>
-
-SoftwareSerial espSerial(3,2); // RX, TX
+// No SoftwareSerial needed
 
 void setup() {
-  Serial.begin(9600);       // Monitor Serial
-  espSerial.begin(9600);    // ESP-01S default baud rate
+  Serial.begin(9600);       // PC Serial Monitor
+  Serial1.begin(9600);      // ESP-01 on TX1/RX1 (Mega pins 18, 19)
 
   delay(2000);
-  espSerial.println("AT"); 
-
-  Serial.println("ESP-01S AT Command Test Ready");
+  Serial1.println("AT");
 }
 
 void loop() {
-  // Forward data from ESP to Serial Monitor
-  if (espSerial.available()) {
-    Serial.write(espSerial.read());
+  if (Serial1.available()) {
+    Serial.write(Serial1.read());
   }
 
-  // Forward data from Serial Monitor to ESP
   if (Serial.available()) {
-    espSerial.write(Serial.read());
+    Serial1.write(Serial.read());
   }
-
-  // Type AT in the Serial Monitor for Testing, it should return "OK"
 }

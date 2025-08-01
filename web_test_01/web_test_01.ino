@@ -1,90 +1,45 @@
-#include <SoftwareSerial.h>
+#include "HX711Sensor.h"
+#include "WiFiModule.h"
+#include "HttpClient.h"
 
-SoftwareSerial espSerial(3, 2); // RX, TX
-
-// === Flags and Timers ===
-bool isReady = false;
-unsigned long lastAT = 0;
-const unsigned long atInterval = 2000;
-
-// === Configuration ===
 const char* ssid     = "X8b";
 const char* password = "12345678";
-const char* host     = "yamanote.proxy.rlwy.net";  // ✅ Correct: no port in domain
-const int port       = 16955;                      // ✅ Connect to correct port
-const char* endpoint = "/api/device-status";
+const char* host     = "yamanote.proxy.rlwy.net";
+const int port       = 16955;
+const char* statusEndpoint = "/api/device-status";
+const char* weightEndpoint = "/api/send-weight";  // New endpoint for HX711
 
-void sendCommand(String cmd, int delayMs = 2000, bool showResponse = true) {
-  espSerial.println(cmd);
-  delay(delayMs);
-  if (showResponse) {
-    while (espSerial.available()) {
-      Serial.write(espSerial.read());
-    }
-  }
-}
+const uint8_t HX_DT_PIN  = 3;
+const uint8_t HX_SCK_PIN = 2;
 
-void connectToWiFi() {
-  sendCommand("AT+CWMODE=1");
-  sendCommand("AT+CWJAP=\"" + String(ssid) + "\",\"" + String(password) + "\"", 8000);
-}
-
-void makeHTTPRequest() {
-  sendCommand("AT+CIPMUX=0");
-  sendCommand("AT+CIPSTART=\"TCP\",\"" + String(host) + "\"," + String(port), 5000);
-
-  String httpRequest =
-    "GET " + String(endpoint) + " HTTP/1.1\r\n" +
-    "Host: " + String(host) + ":" + String(port) + "\r\n" +  // ✅ Include port in header only
-    "Connection: close\r\n\r\n";
-
-  sendCommand("AT+CIPSEND=" + String(httpRequest.length()), 2000);
-  delay(1000);
-  espSerial.print(httpRequest); // Correct: do not use println
-
-  // Read response
-  unsigned long timeout = millis();
-  bool found = false;
-
-  Serial.println("\n[Response Start]");
-  while (millis() - timeout < 10000) {
-    while (espSerial.available()) {
-      char c = espSerial.read();
-      Serial.write(c);
-      timeout = millis(); // Reset timeout on activity
-      if (c == '{') found = true;
-    }
-  }
-  Serial.println("\n[Response End]");
-
-  if (found) {
-    Serial.println("✅ ESP received valid response");
-  } else {
-    Serial.println("❌ ESP failed to read expected response");
-  }
-
-}
+bool isReady = false;
+const unsigned long atInterval = 2000;
 
 void setup() {
   Serial.begin(9600);
-  espSerial.begin(9600);
-  delay(3000);
+  Serial1.begin(9600);  // Mega's Serial1 for ESP-01
 
+  delay(3000);
   while (!isReady) {
-    espSerial.println("AT");
+    Serial1.println("AT");
     delay(atInterval);
-    if (espSerial.find("OK")) {
-      Serial.println("ESP-01S Ready");
+    if (Serial1.find("OK")) {
+      Serial.println("✅ ESP-01S Ready");
       isReady = true;
     } else {
-      Serial.println("Waiting for ESP...");
+      Serial.println("⌛ Waiting for ESP...");
     }
   }
 
-  connectToWiFi();
-  makeHTTPRequest();
+  connectToWiFi(ssid, password, Serial1);
+  initLoadCell(HX_DT_PIN, HX_SCK_PIN);
+
+  // Send initial device status
+  makeHTTPRequest(host, port, statusEndpoint, Serial1);
 }
 
 void loop() {
-  // Nothing to do in loop
+  float weight = readWeight();  // Read fresh weight every loop
+  sendWeightToServer(host, port, weightEndpoint, Serial1, weight);
+  delay(5000);
 }
