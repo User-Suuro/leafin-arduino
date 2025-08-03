@@ -5,7 +5,7 @@ HX711Sensor::HX711Sensor(uint8_t dataPin, uint8_t clockPin)
 
 void HX711Sensor::begin() {
   scale.begin();
-  scale.start(2000);      // Wait for stabilization (optional)
+  scale.start(2000);        // Wait for stabilization (optional)
   scale.setCalFactor(1.0); // Placeholder, should be set to your calibration factor
   scale.tare();           // Reset scale to 0
 }

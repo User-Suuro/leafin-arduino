@@ -1,26 +1,26 @@
-#include "HX711Sensor.h"
+#include <Arduino.h>
 #include "WiFiModule.h"
 #include "HttpClient.h"
-#include <Arduino.h>  // ✅ Needed for Stream, Serial1, etc.
+#include "TurbiditySensor.h"
 
 const char* ssid     = "X8b";
 const char* password = "12345678";
 const char* host     = "yamanote.proxy.rlwy.net";
 const int port       = 16955;
-const char* statusEndpoint = "/api/device-status";
-const char* weightEndpoint = "/api/send-weight";
 
-const uint8_t HX_DT_PIN  = 3;
-const uint8_t HX_SCK_PIN = 2;
+const char* sendStatusEndpoint    = "/api/device-status";
+const char* sendWeightEndpoint    = "/api/send-weight";
+const char* sendTurbidityEndpoint = "/api/send-turbidity";
 
 bool isReady = false;
 const unsigned long atInterval = 2000;
 
-HX711Sensor sensor(HX_DT_PIN, HX_SCK_PIN);  // ✅ Declare sensor object
+// Turbidity sensor on A0
+TurbiditySensor turbiditySensor(A0);
 
 void setup() {
   Serial.begin(9600);
-  Serial1.begin(9600);  // ✅ For Mega. Make sure you use the correct board.
+  Serial1.begin(9600);
 
   delay(3000);
   while (!isReady) {
@@ -35,12 +35,14 @@ void setup() {
   }
 
   connectToWiFi(ssid, password, Serial1);
-  sensor.begin();  // ✅ Initialize sensor
-  makeHTTPRequest(host, port, statusEndpoint, Serial1);
+  delay(5000);
 }
 
 void loop() {
-  float weight = sensor.readWeight();  // ✅ Get reading
-  sendWeightToServer(host, port, weightEndpoint, Serial1, weight);
+  sendConnectionStatus(host, port, sendStatusEndpoint, Serial1);
+  delay(5000);
+
+  float turbidityValue = turbiditySensor.readVoltage();
+  sendTurbidityToServer(host, port, sendTurbidityEndpoint, Serial1, turbidityValue);
   delay(5000);
 }
