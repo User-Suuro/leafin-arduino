@@ -1,3 +1,5 @@
+#include <Arduino.h>
+
 void makeHTTPRequest(const char* host, int port, const char* endpoint, Stream& espSerial) {
   espSerial.print("AT+CIPSTART=\"TCP\",\"");
   espSerial.print(host);

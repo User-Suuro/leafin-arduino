@@ -1,20 +1,17 @@
-#include <Arduino.h>
 #include "WiFiModule.h"
 
-extern const char* ssid;
-extern const char* password;
-
-void sendCommand(const String& cmd, int delayMs, bool showResponse) {
-  Serial1.println(cmd);
+void sendCommand(const String& cmd, Stream& espSerial, int delayMs, bool showResponse) {
+  espSerial.println(cmd);
   delay(delayMs);
   if (showResponse) {
-    while (Serial1.available()) {
-      Serial.write(Serial1.read());
+    while (espSerial.available()) {
+      Serial.write(espSerial.read());
     }
   }
 }
 
-void connectToWiFi() {
-  sendCommand("AT+CWMODE=1");
-  sendCommand("AT+CWJAP=\"" + String(ssid) + "\",\"" + String(password) + "\"", 8000);
+void connectToWiFi(const char* ssid, const char* password, Stream& espSerial) {
+  sendCommand("AT+CWMODE=1", espSerial, 2000);
+  String joinCmd = "AT+CWJAP=\"" + String(ssid) + "\",\"" + String(password) + "\"";
+  sendCommand(joinCmd, espSerial, 8000);
 }
