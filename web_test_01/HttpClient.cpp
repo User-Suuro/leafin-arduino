@@ -124,4 +124,49 @@ void sendTurbidityToServer(const char* host, int port, const char* endpoint, Str
   Serial.println("✅ Turbidity data sent successfully.");
 }
 
+void sendPhToServer(const char* host, int port, const char* endpoint, Stream& espSerial, float phValue) {
+  flushESP(espSerial);
+
+  // Start TCP connection
+  espSerial.print("AT+CIPSTART=\"TCP\",\"");
+  espSerial.print(host);
+  espSerial.print("\",");
+  espSerial.println(port);
+
+  // Wait for connection confirmation
+  if (!waitForResponse(espSerial, "OK") && !waitForResponse(espSerial, "CONNECT")) {
+    Serial.println("❌ pH Sensor: Failed to connect to server.");
+    return;
+  }
+
+  // Construct JSON payload
+  String body = String("{\"ph\":") + phValue + "}";
+  String request = String("POST ") + endpoint + " HTTP/1.1\r\n" +
+                   "Host: " + host + "\r\n" +
+                   "Content-Type: application/json\r\n" +
+                   "Content-Length: " + body.length() + "\r\n\r\n" +
+                   body;
+
+  // Send request size
+  espSerial.print("AT+CIPSEND=");
+  espSerial.println(request.length());
+
+  if (!waitForResponse(espSerial, ">")) {
+    Serial.println("❌ ESP8266 did not prompt for data.");
+    return;
+  }
+
+  // Send the actual HTTP request
+  espSerial.print(request);
+
+  // Wait for confirmation
+  waitForResponse(espSerial, "SEND OK");
+
+  // Close connection
+  espSerial.println("AT+CIPCLOSE");
+
+  Serial.println("✅ pH data sent successfully.");
+}
+
+
 
