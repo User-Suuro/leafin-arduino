@@ -1,8 +1,16 @@
-#pragma once
+#ifndef HTTPCLIENT_H
+#define HTTPCLIENT_H
+
 #include <Arduino.h>
 
-void sendConnectionStatus(const char* host, int port, const char* endpoint, Stream& espSerial);
-void sendWeightToServer(const char* host, int port, const char* endpoint, Stream& espSerial, float weight);
-void sendTurbidityToServer(const char* host, int port, const char* endpoint, Stream& espSerial, float voltage);
-void sendPhToServer(const char* host, int port, const char* endpoint, Stream& espSerial, float phValue);
+void sendAllSensorDataToServer(
+  const char* host,
+  int port,
+  const char* endpoint,
+  Stream& espSerial,
+  const String& jsonPayload,
+  Stream& logSerial
+);
 
+
+#endif

@@ -1,51 +1,55 @@
 #include "WiFiModule.h"
 
-void sendCommand(const String& cmd, Stream& espSerial, int delayMs, bool showResponse) {
-  espSerial.println(cmd);
-  delay(delayMs);
-  if (showResponse) {
+bool isWiFiConnected(Stream& espSerial) {
+  // Clear any previous response
+  while (espSerial.available()) espSerial.read();
+
+  espSerial.println("AT+CIPSTATUS");
+  unsigned long start = millis();
+  String response = "";
+
+  while (millis() - start < 2000) {
     while (espSerial.available()) {
-      Serial.write(espSerial.read());
-    }
-  }
-}
-
-void connectToWiFi(const char* ssid, const char* password, Stream& espSerial) {
-  sendCommand("AT+CWMODE=1", espSerial, 2000);
-  String joinCmd = "AT+CWJAP=\"" + String(ssid) + "\",\"" + String(password) + "\"";
-  sendCommand(joinCmd, espSerial, 8000, true);  // show initial join response
-
-  // Wait for Wi-Fi connection confirmation
-  bool connected = false;
-  unsigned long startTime = millis();
-  const unsigned long timeout = 15000; // 15 seconds timeout
-
-  Serial.print("⏳ Connecting to Wi-Fi");
-
-  while (millis() - startTime < timeout) {
-    sendCommand("AT+CWJAP?", espSerial, 1000, false); // Check connection status
-
-    String response = "";
-    unsigned long responseStart = millis();
-    while (millis() - responseStart < 1000 && espSerial.available()) {
       response += char(espSerial.read());
     }
-
-    if (response.indexOf(ssid) >= 0) {
-      connected = true;
-      break;
-    }
-
-    Serial.print(".");
-    delay(500);
   }
 
-  Serial.println(); // for newline
+  return response.indexOf("STATUS:2") >= 0 || response.indexOf("STATUS:3") >= 0;
+}
 
-  if (connected) {
-    Serial.println("✅ Wi-Fi connected.");
+void connectToWiFi(const char* ssid, const char* password, Stream& espSerial, Stream& logSerial) {
+  if (isWiFiConnected(espSerial)) {
+    logSerial.println("📶 Already connected to WiFi");
+    return;
+  }
+
+  logSerial.println("🔌 Connecting to WiFi...");
+
+  // Clear buffer
+  while (espSerial.available()) espSerial.read();
+
+  espSerial.println("AT+CWMODE=1");
+  delay(2000);
+
+  String cmd = String("AT+CWJAP=\"") + ssid + "\",\"" + password + "\"";
+  espSerial.println(cmd);
+
+  unsigned long start = millis();
+  String response = "";
+
+  while (millis() - start < 10000) { // 10 second timeout
+    while (espSerial.available()) {
+      char c = espSerial.read();
+      response += c;
+    }
+  }
+
+  logSerial.println("📡 WiFi Join Response:");
+  logSerial.println(response);
+
+  if (response.indexOf("WIFI CONNECTED") >= 0 || response.indexOf("OK") >= 0) {
+    logSerial.println("✅ WiFi Connected!");
   } else {
-    Serial.println("❌ Failed to connect to Wi-Fi.");
-    while (true);  // Stop here forever until reset
+    logSerial.println("❌ Failed to connect.");
   }
 }

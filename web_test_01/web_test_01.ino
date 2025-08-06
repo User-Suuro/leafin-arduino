@@ -3,55 +3,59 @@
 #include "HttpClient.h"
 #include "TurbiditySensor.h"
 #include "phSensor.h"
+#include "RTCSensor.h"
 
+// WiFi credentials
 const char* ssid     = "X8b";
 const char* password = "12345678";
 const char* host     = "yamanote.proxy.rlwy.net";
 const int port       = 16955;
+const char* endpoint = "/api/send-sensor-data";
 
-const char* sendStatusEndpoint    = "/api/device-status";
-const char* sendWeightEndpoint    = "/api/send-weight";
-const char* sendTurbidityEndpoint = "/api/send-turbidity";
-const char* sendPhEndpoint        = "/api/send-ph";  // ← Add this to your API
-
-bool isReady = false;
-const unsigned long atInterval = 2000;
-
+// Sensors
+RTCSensor rtcSensor; // SDA | SCL
 TurbiditySensor turbiditySensor(A0);
-PhSensor phSensor(A1);  // Change A1 to your desired pH sensor analog pin
+PhSensor phSensor(A1);
+
+// Serial Definitions
+#define SerialLog Serial      // USB Serial Monitor
+#define SerialESP Serial1     // ESP-01S via Serial1 (TX1=18, RX1=19)
 
 void setup() {
-  Serial.begin(9600);
-  Serial1.begin(9600);
+  SerialLog.begin(9600);    
+  SerialESP.begin(9600);
+  rtcSensor.begin();
 
-  delay(3000);
-  while (!isReady) {
-    Serial1.println("AT");  
-    delay(atInterval);
-    if (Serial1.find("OK")) {
-      Serial.println("✅ ESP-01S Ready");
-      isReady = true;
-    } else {
-      Serial.println("⌛ Waiting for ESP...");
-    }
-  }
-
-  connectToWiFi(ssid, password, Serial1);
-  delay(5000);
+  delay(2000);                 
+  SerialLog.println("🔧 Starting WiFi connection...");
+  connectToWiFi(ssid, password, SerialESP, SerialLog);
 }
 
 void loop() {
-  sendConnectionStatus(host, port, sendStatusEndpoint, Serial1);
+  // Read sensor data
+  float turbidity = turbiditySensor.readVoltage();
+  float ph = phSensor.readPH();
+  String currentTime = rtcSensor.getTime();
+  String currentDate = rtcSensor.getDate();
 
-  delay(1000);
+  // Log sensor values
+  SerialLog.print("💧 Turbidity: "); SerialLog.print(turbidity); SerialLog.println(" V");
+  SerialLog.print("🧪 pH: "); SerialLog.println(ph);
+  SerialLog.print("Time: "); SerialLog.println(currentTime);
+  SerialLog.print("Date: "); SerialLog.println(currentDate);
 
-  float turbidityValue = turbiditySensor.readVoltage();
-  sendTurbidityToServer(host, port, sendTurbidityEndpoint, Serial1, turbidityValue);
+  // Build JSON payload here
+  SensorDataBuilder builder;
+  builder.addField("connected", "true")
+         .addField("time", currentTime)
+         .addField("date", currentDate)
+         .addField("ph", ph)
+         .addField("turbid", turbidity);
 
-  delay(1000);
+  String jsonPayload = builder.build();
 
-  float phValue = phSensor.readPH();
-  sendPhToServer(host, port, sendPhEndpoint, Serial1, phValue);
+  // Send JSON to server
+  sendAllSensorDataToServer(host, port, endpoint, SerialESP, jsonPayload, SerialLog);
 
-  delay(1000);
+  delay(5000);
 }

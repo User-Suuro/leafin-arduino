@@ -1,172 +1,72 @@
-#include "HttpClient.h"
+// Use Sensor Data Builder, to build the jsonPayLoad
 
-void flushESP(Stream& espSerial) {
+void sendAllSensorDataToServer(
+  const char* host,
+  int port,
+  const char* endpoint,
+  Stream& espSerial,
+  const String& jsonPayload,
+  Stream& logSerial
+) {
+  logSerial.println("🌐 Sending sensor data...");
   while (espSerial.available()) espSerial.read();
-}
 
-bool waitForResponse(Stream& espSerial, const char* keyword, unsigned long timeout = 5000) {
+  String connectCmd = String("AT+CIPSTART=\"TCP\",\"") + host + "\"," + port;
+  espSerial.println(connectCmd);
+  delay(2000);
+
+  String connectResp = "";
   unsigned long start = millis();
-  String response = "";
-  while (millis() - start < timeout) {
+  while (millis() - start < 3000) {
     while (espSerial.available()) {
-      char c = espSerial.read();
-      response += c;
-      Serial.write(c); // Print ESP response to Serial monitor for debugging
-      if (response.indexOf(keyword) != -1) {
-        return true;
-      }
+      connectResp += char(espSerial.read());
     }
   }
-  return false;
-}
 
-void sendConnectionStatus(const char* host, int port, const char* endpoint, Stream& espSerial) {
-  flushESP(espSerial);
-
-  espSerial.print("AT+CIPSTART=\"TCP\",\"");
-  espSerial.print(host);
-  espSerial.print("\",");
-  espSerial.println(port);
-  
-  if (!waitForResponse(espSerial, "CONNECT")) {
-    Serial.println("❌ Wifi Module Failed to connect to server.");
+  if (connectResp.indexOf("ERROR") >= 0 || connectResp.indexOf("FAIL") >= 0) {
+    logSerial.println("❌ TCP Connection Failed:");
+    logSerial.println(connectResp);
     return;
   }
 
-  String httpRequest = String("GET ") + endpoint + " HTTP/1.1\r\n" +
-                       "Host: " + host + "\r\n" +
-                       "Connection: close\r\n\r\n";
-
-  espSerial.print("AT+CIPSEND=");
-  espSerial.println(httpRequest.length());
-  if (!waitForResponse(espSerial, ">")) {
-    Serial.println("❌ ESP8266 did not prompt for data.");
-    return;
-  }
-
-  espSerial.print(httpRequest);
-  waitForResponse(espSerial, "SEND OK");
-  espSerial.println("AT+CIPCLOSE");
-}
-
-void sendWeightToServer(const char* host, int port, const char* endpoint, Stream& espSerial, float weight) {
-  flushESP(espSerial);
-
-  espSerial.print("AT+CIPSTART=\"TCP\",\"");
-  espSerial.print(host);
-  espSerial.print("\",");
-  espSerial.println(port);
-  if (!waitForResponse(espSerial, "CONNECT")) {
-    Serial.println("❌ HX711 Failed to connect to server.");
-    return;
-  }
-
-  String body = String("{\"weight\":") + weight + "}";
-  String request = String("POST ") + endpoint + " HTTP/1.1\r\n" +
-                   "Host: " + host + "\r\n" +
-                   "Content-Type: application/json\r\n" +
-                   "Content-Length: " + body.length() + "\r\n\r\n" +
-                   body;
+  // Construct HTTP request
+  String request =
+    "POST " + String(endpoint) + " HTTP/1.1\r\n" +
+    "Host: " + host + "\r\n" +
+    "Content-Type: application/json\r\n" +
+    "Content-Length: " + String(jsonPayload.length()) + "\r\n" +
+    "Connection: close\r\n\r\n" +
+    jsonPayload;
 
   espSerial.print("AT+CIPSEND=");
   espSerial.println(request.length());
-  if (!waitForResponse(espSerial, ">")) {
-    Serial.println("❌ ESP8266 did not prompt for data.");
+
+  bool promptReceived = false;
+  start = millis();
+  while (millis() - start < 5000) {
+    if (espSerial.find(">")) {
+      promptReceived = true;
+      break;
+    }
+  }
+
+  if (!promptReceived) {
+    logSerial.println("❌ Timeout waiting for > prompt");
     return;
   }
 
   espSerial.print(request);
-  waitForResponse(espSerial, "SEND OK");
+
+  String serverResp = "";
+  start = millis();
+  while (millis() - start < 5000) {
+    while (espSerial.available()) {
+      serverResp += char(espSerial.read());
+    }
+  }
+
+  logSerial.println("✅ Server Response:");
+  logSerial.println(serverResp);
+
   espSerial.println("AT+CIPCLOSE");
 }
-
-void sendTurbidityToServer(const char* host, int port, const char* endpoint, Stream& espSerial, float voltage) {
-  flushESP(espSerial);
-
-  // Start TCP connection
-  espSerial.print("AT+CIPSTART=\"TCP\",\"");
-  espSerial.print(host);
-  espSerial.print("\",");
-  espSerial.println(port);
-
-  // Wait for plain-text response from ESP
-  if (!waitForResponse(espSerial, "OK") && !waitForResponse(espSerial, "CONNECT")) {
-    Serial.println("❌ Turbidity: Failed to connect to server.");
-    return;
-  }
-
-  // Construct JSON body
-  String body = String("{\"turbidity\":") + voltage + "}";
-  String request = String("POST ") + endpoint + " HTTP/1.1\r\n" +
-                   "Host: " + host + "\r\n" +
-                   "Content-Type: application/json\r\n" +
-                   "Content-Length: " + body.length() + "\r\n\r\n" +
-                   body;
-
-  // Send request length
-  espSerial.print("AT+CIPSEND=");
-  espSerial.println(request.length());
-
-  if (!waitForResponse(espSerial, ">")) {
-    Serial.println("❌ ESP8266 did not prompt for data.");
-    return;
-  }
-
-  // Send the request body
-  espSerial.print(request);
-
-  // Wait for confirmation that data was sent
-  waitForResponse(espSerial, "SEND OK");
-
-  // Close connection
-  espSerial.println("AT+CIPCLOSE");
-
-  Serial.println("✅ Turbidity data sent successfully.");
-}
-
-void sendPhToServer(const char* host, int port, const char* endpoint, Stream& espSerial, float phValue) {
-  flushESP(espSerial);
-
-  // Start TCP connection
-  espSerial.print("AT+CIPSTART=\"TCP\",\"");
-  espSerial.print(host);
-  espSerial.print("\",");
-  espSerial.println(port);
-
-  // Wait for connection confirmation
-  if (!waitForResponse(espSerial, "OK") && !waitForResponse(espSerial, "CONNECT")) {
-    Serial.println("❌ pH Sensor: Failed to connect to server.");
-    return;
-  }
-
-  // Construct JSON payload
-  String body = String("{\"ph\":") + phValue + "}";
-  String request = String("POST ") + endpoint + " HTTP/1.1\r\n" +
-                   "Host: " + host + "\r\n" +
-                   "Content-Type: application/json\r\n" +
-                   "Content-Length: " + body.length() + "\r\n\r\n" +
-                   body;
-
-  // Send request size
-  espSerial.print("AT+CIPSEND=");
-  espSerial.println(request.length());
-
-  if (!waitForResponse(espSerial, ">")) {
-    Serial.println("❌ ESP8266 did not prompt for data.");
-    return;
-  }
-
-  // Send the actual HTTP request
-  espSerial.print(request);
-
-  // Wait for confirmation
-  waitForResponse(espSerial, "SEND OK");
-
-  // Close connection
-  espSerial.println("AT+CIPCLOSE");
-
-  Serial.println("✅ pH data sent successfully.");
-}
-
-
-
