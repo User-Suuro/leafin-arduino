@@ -4,13 +4,14 @@
 #include "TurbiditySensor.h"
 #include "phSensor.h"
 #include "RTCSensor.h"
+#include "SensorDataBuilder.h"
 
 // WiFi credentials
 const char* ssid     = "X8b";
 const char* password = "12345678";
 const char* host     = "yamanote.proxy.rlwy.net";
 const int port       = 16955;
-const char* endpoint = "/api/send-sensor-data";
+const char* endpoint = "/api/arduino/send-data";
 
 // Sensors
 RTCSensor rtcSensor; // SDA | SCL
@@ -30,6 +31,7 @@ void setup() {
   SerialLog.println("🔧 Starting WiFi connection...");
   connectToWiFi(ssid, password, SerialESP, SerialLog);
 }
+
 
 void loop() {
   // Read sensor data

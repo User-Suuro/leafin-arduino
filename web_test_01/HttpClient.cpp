@@ -1,3 +1,5 @@
+#include "HttpClient.h"
+
 // Use Sensor Data Builder, to build the jsonPayLoad
 
 void sendAllSensorDataToServer(
