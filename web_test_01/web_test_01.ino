@@ -16,7 +16,7 @@ const char* endpoint = "/api/arduino/send-data";
 // Sensors
 RTCSensor rtcSensor; // SDA | SCL
 TurbiditySensor turbiditySensor(A0);
-PhSensor phSensor(A1);
+pHSensor phSensor(A1);
 
 // Serial Definitions
 #define SerialLog Serial      // USB Serial Monitor
@@ -32,32 +32,27 @@ void setup() {
   connectToWiFi(ssid, password, SerialESP, SerialLog);
 }
 
-
 void loop() {
-  // Read sensor data
   float turbidity = turbiditySensor.readVoltage();
-  float ph = phSensor.readPH();
+  float phValue = phSensor.readPH(); // Call readPH() from the object
   String currentTime = rtcSensor.getTime();
   String currentDate = rtcSensor.getDate();
 
-  // Log sensor values
   SerialLog.print("💧 Turbidity: "); SerialLog.print(turbidity); SerialLog.println(" V");
-  SerialLog.print("🧪 pH: "); SerialLog.println(ph);
+  SerialLog.print("🧪 pH: "); SerialLog.println(phValue);
   SerialLog.print("Time: "); SerialLog.println(currentTime);
   SerialLog.print("Date: "); SerialLog.println(currentDate);
 
-  // Build JSON payload here
   SensorDataBuilder builder;
   builder.addField("connected", "true")
          .addField("time", currentTime)
          .addField("date", currentDate)
-         .addField("ph", ph)
+         .addField("ph", phValue)
          .addField("turbid", turbidity);
 
   String jsonPayload = builder.build();
-
-  // Send JSON to server
   sendAllSensorDataToServer(host, port, endpoint, SerialESP, jsonPayload, SerialLog);
 
   delay(5000);
 }
+
