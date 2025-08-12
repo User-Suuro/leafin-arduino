@@ -8,7 +8,13 @@ class RTCSensor {
     RTC_DS3231 rtc;
 
   public:
-    bool begin();
+    // Allow forcing time set on startup
+    bool begin(bool forceSet = false);
+
+    // Manual time setting function
+    void setTime(int year, int month, int day, int hour, int minute, int second);
+
+    // Getters
     String getTime();
     String getDate();
 };

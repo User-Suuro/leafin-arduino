@@ -25,7 +25,7 @@ pHSensor phSensor(A1);
 void setup() {
   SerialLog.begin(9600);    
   SerialESP.begin(9600);
-  rtcSensor.begin();
+  rtcSensor.begin(true);
 
   delay(2000);                 
   SerialLog.println("🔧 Starting WiFi connection...");
