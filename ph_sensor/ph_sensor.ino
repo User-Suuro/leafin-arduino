@@ -1,5 +1,5 @@
 // pH Sensor Reading Script
-const int pH_Pin = A0;            // Analog input pin for pH sensor
+const int pH_Pin = A1;            // Analog input pin for pH sensor
 const float voltageAtPH7 = 2.5;   // Voltage at pH 7.0
 const float slope = -5.0;         // Sensor slope (approximate)
 
@@ -13,7 +13,7 @@ void loop() {
   float voltage = analogValue * (5.0 / 1023.0);            // Convert to voltage
   float pH = 7.0 + ((voltage - voltageAtPH7) * slope);     // Convert voltage to pH
 
-  // Display the results
+  // Display the resultsa
   Serial.print("Analog: ");
   Serial.print(analogValue);
   Serial.print(" | Voltage: ");

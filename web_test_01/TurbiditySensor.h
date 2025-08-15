@@ -10,6 +10,7 @@ class TurbiditySensor {
   public:
     TurbiditySensor(int pin);
     float readVoltage();
+    bool isConnected();
 };
 
 #endif
