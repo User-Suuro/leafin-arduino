@@ -1,4 +1,5 @@
 #include "WiFiModule.h"
+#include <EEPROM.h>
 
 bool isWiFiConnected(Stream& espSerial) {
   // Clear any previous response
@@ -53,3 +54,4 @@ void connectToWiFi(const char* ssid, const char* password, Stream& espSerial, St
     logSerial.println("❌ Failed to connect.");
   }
 }
+

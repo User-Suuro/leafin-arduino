@@ -1,103 +1,144 @@
 #include <Arduino.h>
+
+// network
 #include "WiFiModule.h"
-#include "HttpClient.h"
+#include "SendClient.h"
+#include "ReceiveClient.h"
+#include "JsonBuilder.h"
+
+// sensors
+#include "FloatSwitch.h"
 #include "TurbiditySensor.h"
 #include "phSensor.h"
 #include "RTCSensor.h"
-#include "SensorDataBuilder.h"
 #include "DS18B20Sensor.h"
-#include "FloatSwitch.h"
+#include "MQ137Sensor.h"
+#include "TDS_Sensor.h"
 
-// WiFi credentials
-const char* ssid     = "HpElitebook";
-const char* password = "12345678";
-const char* host     = "yamanote.proxy.rlwy.net";
-const int port       = 16955;
-const char* send_enpoint = "/api/arduino/send-data";
-const char* receive_endpoint = "/api/arduino/receive-data";
+const char* ssid="X8b";
+const char* password="12345678";
+
+const char* host = "yamanote.proxy.rlwy.net";
+const int port   = 16955;
+
+// Endpoints
+const char* send_enpoint    = "/api/arduino/send-data";
+const char* receive_endpoint = "/api/arduino/send-command";
 
 // SDA | SCL
 RTCSensor rtcSensor;
 
 // Analog Pins
-TurbiditySensor turbiditySensor(A0);
-pHSensor phSensor(A1);
+MQ137Sensor nh3Gas(A0);
+TurbiditySensor turbidity(A1);
+pHSensor ph(A2);
+TDSSensor tds(A3);
 
 // Digital Pins
-#define FLOAT_SWITCH_PIN 8
-FloatSwitch waterLevel(FLOAT_SWITCH_PIN, true);
-
-#define DS18B20_PIN 9
-DS18B20Sensor waterTemp(DS18B20_PIN);
+FloatSwitch waterLevel(6, true);
+DS18B20Sensor waterTemp(7);
 
 // Serial Definitions
-#define SerialLog Serial      // USB Serial Monitor
-#define SerialESP Serial1     // ESP-01S via Serial1 (TX1=18, RX1=19)
+#define SerialLog Serial
+#define SerialESP Serial1
 
 void setup() {
-  SerialLog.begin(9600);    
-  SerialESP.begin(9600);
 
-  
-  rtcSensor.begin(true);
-  waterTemp.begin();
-  waterLevel.begin();
-  phSensor.begin();
+    SerialLog.begin(9600);    
+    SerialESP.begin(9600);
+    rtcSensor.begin(true);
+    waterTemp.begin();
+    waterLevel.begin();
+    ph.begin();
+    tds.begin();
+    
+    nh3Gas.setCalibration(10.0, -0.263, 0.42);  
 
-  delay(1000);  
-                 
-  SerialLog.println("🔧 Starting WiFi connection...");
-  connectToWiFi(ssid, password, SerialESP, SerialLog);
+    connectToWiFi(ssid, password, SerialESP, SerialLog);
 
-  delay(1000);
+    delay(2000);
 
-  if (waterTemp.isConnected()) {
-      Serial.println("DS18B20 sensor connected successfully!");
-  } else {
-      Serial.println("No DS18B20 sensor detected!");
-  }
-
-  delay(1000)
-
-  if (!phSensor.isConnected()) {
-      Serial.println("⚠ pH sensor not detected!");
-  } else {
-      Serial.println("✅ pH sensor connected.");
-  }
+    while (!isWiFiConnected(SerialESP)) {
+        SerialLog.println("🔧 Starting WiFi connection...");
+        connectToWiFi(ssid, password, SerialESP, SerialLog);
+        delay(2000);
+    }
 }
 
 void loop() {
-  float turbidity = turbiditySensor.readVoltage();
-  float phValue = phSensor.readPH(); // Call readPH() from the object
-  String currentTime = rtcSensor.getTime();
-  String currentDate = rtcSensor.getDate();
-  float tempC = waterTemp.readCelsius();
-  bool isWaterLevelTriggered = waterLevel.isTriggered();
 
-  SerialLog.print("💧 Turbidity: "); SerialLog.print(turbidity); SerialLog.println(" V");
-  SerialLog.print("🧪 pH: "); SerialLog.println(phValue);
-  SerialLog.print("Time: "); SerialLog.println(currentTime);
-  SerialLog.print("Date: "); SerialLog.println(currentDate);
-  SerialLog.print("Water Temperature: "); SerialLog.println(tempC);
+   sendVal();
 
-   if (waterLevel.isTriggered()) {
+   receiveVal();
+ 
+   delay(5000); // keep as 5s cycle
+}
+
+// -- receive values from web -- //
+
+void receiveVal() {
+    String webCommand = receiveCommandFromWeb(host, port, receive_endpoint, SerialESP, SerialLog);
+
+    if (webCommand.length() > 0) {
+        SerialLog.println("✅ Command from web: " + webCommand);
+
+        // Example: If command is "hello", you could trigger an LED or action
+        if (webCommand == "hello") {
+            SerialLog.println("🌟 Hello command received!");
+        }
+    } else {
+        SerialLog.println("⚠ No command received");
+    }
+}
+
+// -- send values to web -- //
+
+void sendVal() {
+
+    float turbidity_val = turbidity.readNTU();
+    float ph_val = ph.readPH();
+
+    String time_val = rtcSensor.getTime();
+    String date_val = rtcSensor.getDate();
+
+    float temp_val = waterTemp.readCelsius();
+
+    tds.update(temp_val);
+    float tdsValue = tds.getValue();
+
+    bool isWaterLevelTriggered = waterLevel.isTriggered();
+    float nh3_gas = nh3Gas.readPPM();
+
+    SerialLog.print("💧 Turbidity: "); SerialLog.println(turbidity_val);
+    SerialLog.print("🧪 pH: "); SerialLog.println(ph_val);
+    SerialLog.print("Time: "); SerialLog.println(time_val);
+    SerialLog.print("Date: "); SerialLog.println(date_val);
+    SerialLog.print("Water Temperature: "); SerialLog.println(temp_val);
+    SerialLog.print("TDS: "); SerialLog.println(tdsValue, 0);
+    
+    if (waterLevel.isTriggered()) {
         Serial.println("⚠ Insufficient Water Level");
     } else {
         Serial.println("Water level normal.");
     }
 
-  SensorDataBuilder builder;
-  builder.addField("connected", true)
-         .addField("time", currentTime)
-         .addField("date", currentDate)
-         .addField("ph", phValue)
-         .addField("turbid", turbidity)
-         .addField("water_temp", tempC)
-         .addField("is_water_lvl_normal", !isWaterLevelTriggered);
+    Serial.print("NH3 gas PPM: "); Serial.print(nh3_gas);
 
-  String jsonPayload = builder.build();
-  sendAllSensorDataToServer(host, port, send_enpoint, SerialESP, jsonPayload, SerialLog);
+    // --- SEND DATA TO SERVER ---
+    JsonBuilder builder;
+    builder.addField("connected", true)
+           .addField("time", time_val)
+           .addField("date", date_val)
+           .addField("ph", ph_val)
+           .addField("turbid", turbidity_val)
+           .addField("water_temp", temp_val)
+           .addField("tds", tdsValue)
+           .addField("float_switch", !isWaterLevelTriggered)
+           .addField("nh3_gas", nh3_gas)
+           ;
 
-  delay(5000);
+    String jsonPayload = builder.build();
+    sendAllSensorDataToServer(host, port, send_enpoint, SerialESP, jsonPayload, SerialLog);
+
 }
 

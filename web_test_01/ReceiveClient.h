@@ -1,16 +1,14 @@
-#ifndef HTTPCLIENT_H
-#define HTTPCLIENT_H
+#ifndef ReceiveClient_h
+#define ReceiveClient_h
 
 #include <Arduino.h>
 
-void sendAllSensorDataToServer(
+String receiveCommandFromWeb(
   const char* host,
   int port,
   const char* endpoint,
   Stream& espSerial,
-  const String& jsonPayload,
   Stream& logSerial
 );
-
 
 #endif

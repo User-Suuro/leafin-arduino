@@ -3,6 +3,8 @@
 bool RTCSensor::begin(bool forceSetTime) {
     if (!rtc.begin()) return false;
 
+    rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+
     if (forceSetTime || rtc.lostPower()) {
         // Set RTC to the time when the sketch was compiled
         rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
