@@ -6,7 +6,7 @@
 //  - GND to sensor GND
 //  - VCC to 5V or 3.3V (check module spec)
 //  - Data to selected pin, with a 4.7kΩ pull-up resistor to VCC
-#define DS18B20_PIN 9
+#define DS18B20_PIN 7
 
 DS18B20Sensor waterTemp(DS18B20_PIN);
 

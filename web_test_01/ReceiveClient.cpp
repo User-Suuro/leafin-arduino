@@ -14,7 +14,6 @@ String receiveCommandFromWeb(
     String connectCmd = String("AT+CIPSTART=\"TCP\",\"") + host + "\"," + port;
     espSerial.println(connectCmd);
 
-    // wait for connection OK
     unsigned long start = millis();
     String connectResp = "";
     while (millis() - start < 5000) {
@@ -74,20 +73,10 @@ String receiveCommandFromWeb(
     if (jsonStart == -1 || jsonEnd == -1) return "";
 
     String jsonPayload = response.substring(jsonStart, jsonEnd + 1);
-    logSerial.println("🔹 Extracted JSON:");
-    logSerial.println(jsonPayload);
-
-    // -- parse "command" --
-    int idx = jsonPayload.indexOf("\"command\":\"");
-    if (idx == -1) return "";
-
-    idx += 10;
-    int endIdx = jsonPayload.indexOf("\"", idx);
-    if (endIdx == -1) return "";
 
     // -- close connection --
     espSerial.println("AT+CIPCLOSE");
     delay(200);
 
-    return jsonPayload.substring(idx, endIdx);
+    return jsonPayload;   // return whole JSON string
 }

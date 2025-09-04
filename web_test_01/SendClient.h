@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 
-void sendAllSensorDataToServer(
+void sendDataToServer(
   const char* host,
   int port,
   const char* endpoint,

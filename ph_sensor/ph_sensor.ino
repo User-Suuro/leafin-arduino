@@ -1,5 +1,5 @@
 // pH Sensor Reading Script
-const int pH_Pin = A1;            // Analog input pin for pH sensor
+const int pH_Pin = A2;            // Analog input pin for pH sensor
 const float voltageAtPH7 = 2.5;   // Voltage at pH 7.0
 const float slope = -5.0;         // Sensor slope (approximate)
 

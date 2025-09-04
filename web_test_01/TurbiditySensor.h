@@ -4,14 +4,14 @@
 #include <Arduino.h>
 
 class TurbiditySensor {
-  private:
-    int analogPin;
-
   public:
-    TurbiditySensor(int pin);
-    float readVoltage();
-    float readNTU();
-    bool isConnected();
+    TurbiditySensor(uint8_t pin, float referenceVoltage = 5.0, int resolution = 1024);
+    float getValue();
+
+  private:
+    uint8_t _pin;
+    float _refVoltage;
+    int _resolution;
 };
 
 #endif

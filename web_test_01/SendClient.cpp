@@ -2,7 +2,7 @@
 
 // Use Sensor Data Builder, to build the jsonPayLoad
 
-void sendAllSensorDataToServer(
+void sendDataToServer(
   const char* host,
   int port,
   const char* endpoint,

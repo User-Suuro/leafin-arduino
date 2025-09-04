@@ -1,4 +1,5 @@
-#include <MQ137Sensor.h>
+#include "Arduino.h"
+#include "MQ137Sensor.h"
 
 #define MQ137_PIN A0 // Analog pin connected to MQ137 output
 

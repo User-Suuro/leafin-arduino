@@ -1,24 +1,25 @@
-#include <EEPROM.h>
-#include "GravityTDS.h"
-#define TDSSensorPin A1
-GravityTDS gravityTds;
+#include <Arduino.h>
+#include "TDS_Sensor.h"
 
-float temperature = 25,tdsValue = 0;
+#define TDSSensorPin A3
+
+TDSSensor tds(TDSSensorPin);
+
+// Example: using a variable for temperature
+float waterTemp = 25.0; // Replace with actual sensor reading
 
 void setup() {
-  Serial.begin(115200);
-  gravityTds.setPin(TDSSensorPin);
-  gravityTds.setAref(5.0);
-  gravityTds.setAdcRange(1024);
-  gravityTds.begin();
+    Serial.begin(9600);
+    tds.begin();
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-  gravityTds.setTemperature(temperature);
-  gravityTds.update();
-  tdsValue = gravityTds.getTdsValue();
-  Serial.print(tdsValue,0);
-  Serial.println("ppm");
-  delay(1000);
+    // Example: If you have a DS18B20, update waterTemp here
+    // waterTemp = readDS18B20();
+
+    tds.update(waterTemp);
+    Serial.print(tds.getValue(), 0);
+    Serial.println("ppm");
+
+    delay(1000);
 }

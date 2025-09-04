@@ -1,5 +1,5 @@
-#ifndef ReceiveClient_h
-#define ReceiveClient_h
+#ifndef RECEIVECLIENT_H
+#define RECEIVECLIENT_H
 
 #include <Arduino.h>
 

@@ -5,7 +5,7 @@
 //  - One wire to GND
 //  - Other wire to selected Arduino pin
 // The built-in pull-up will hold the pin HIGH until the switch closes.
-#define FLOAT_SWITCH_PIN 8
+#define FLOAT_SWITCH_PIN 6
 
 // If your float switch closes when water is HIGH, use invert = true
 FloatSwitch waterLevel(FLOAT_SWITCH_PIN, true);

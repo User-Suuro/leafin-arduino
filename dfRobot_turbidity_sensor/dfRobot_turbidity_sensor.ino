@@ -3,7 +3,7 @@ void setup() {
 }
 
 void loop() {
-  int sensorValue = analogRead(A0);
+  int sensorValue = analogRead(A1);
   float voltage = sensorValue * (5.0 / 1024.0);
   
   Serial.println ("Sensor Output (V):");

@@ -12,6 +12,8 @@ void setup() {
     while (1);
   }
 
+   rtc.adjust(DateTime(F(__DATE__), F(__TIME__))); // Use PC compile time
+
   if (rtc.lostPower()) {
     Serial.println("⚠️ RTC lost power, setting the time!");
     // Set the time once, then comment out or remove this line
